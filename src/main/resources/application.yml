@@ -1,0 +1,37 @@
+server:
+  port: 8081
+spring:
+  application:
+    name: RentalService
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ''
+  h2:
+    console:
+      enabled: true
+      settings:
+        web-allow-others: true
+        trace: false
+      path: /h2-console
+      allowed-origins: "*"
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    #        defer-datasource-initialization: true
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+  sql:
+    init:
+      platform: h2
+      mode: embedded
+      schema-locations: classpath:/data.sql
+logging:
+  level:
+    root: INFO
+    com.rentalcar.rental: TRACE
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
