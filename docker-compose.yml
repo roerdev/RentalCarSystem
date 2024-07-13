@@ -1,0 +1,17 @@
+services:
+  product:
+    container_name: rental-service
+    image: rental-service:1.0.0
+    build: .
+    ports:
+      - 8081:8081
+    environment:
+      JAVA_OPTS: -Xmx70m -Duser.timezone=Europe/Madrid
+    deploy:
+      resources:
+        limits:
+          memory: 300M
+
+networks:
+  default:
+    driver: bridge
