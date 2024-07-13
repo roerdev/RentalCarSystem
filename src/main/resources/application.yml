@@ -3,6 +3,8 @@ server:
 spring:
   application:
     name: RentalService
+  jackson:
+    default-property-inclusion: non_null
   datasource:
     url: jdbc:h2:mem:testdb
     driver-class-name: org.h2.Driver
@@ -18,7 +20,6 @@ spring:
       allowed-origins: "*"
   jpa:
     database-platform: org.hibernate.dialect.H2Dialect
-    #        defer-datasource-initialization: true
     hibernate:
       ddl-auto: none
     show-sql: true
@@ -32,6 +33,8 @@ logging:
     root: INFO
     com.rentalcar.rental: TRACE
 springdoc:
+  api-docs:
+    path: /api-docs
   swagger-ui:
     path: /swagger-ui.html
     enabled: true
