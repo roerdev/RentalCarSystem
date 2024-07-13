@@ -52,7 +52,7 @@ public class ExceptionHandlerController {
     @ResponseBody
     public ResponseEntity<ErrorDto> handleValidationExceptions(MethodArgumentNotValidException ex) {
         StringBuilder errorMessage = new StringBuilder();
-        ex.getBindingResult().getAllErrors().forEach((error) -> {
+        ex.getBindingResult().getAllErrors().forEach(error -> {
             String fieldName = ((FieldError) error).getField();
             String errorString = error.getDefaultMessage();
             errorMessage.append(fieldName).append(": ").append(errorString).append(". \n");

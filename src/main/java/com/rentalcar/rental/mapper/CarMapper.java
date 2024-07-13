@@ -3,7 +3,6 @@ package com.rentalcar.rental.mapper;
 import com.rentalcar.rental.dto.CarDTO;
 import com.rentalcar.rental.model.Car;
 import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
 
 @Mapper
 public interface CarMapper {
