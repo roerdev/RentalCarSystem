@@ -1,5 +1,6 @@
 package com.rentalcar.rental.service.impl;
 
+import com.rentalcar.rental.dto.CarDTO;
 import com.rentalcar.rental.dto.RentalDTO;
 import com.rentalcar.rental.dto.RentalRequestDTO;
 import com.rentalcar.rental.dto.ReturnRequestDTO;
@@ -8,16 +9,17 @@ import com.rentalcar.rental.exception.NotFoundException;
 import com.rentalcar.rental.exception.ValidationException;
 import com.rentalcar.rental.mapper.RentalMapper;
 import com.rentalcar.rental.model.Car;
+import com.rentalcar.rental.model.Client;
 import com.rentalcar.rental.model.Rental;
-import com.rentalcar.rental.repository.CarRepository;
-import com.rentalcar.rental.repository.ClientRepository;
 import com.rentalcar.rental.repository.PriceConditionRepository;
 import com.rentalcar.rental.repository.RentalRepository;
-import com.rentalcar.rental.repository.StatusCarRepository;
+import com.rentalcar.rental.service.CarService;
+import com.rentalcar.rental.service.ClientService;
 import com.rentalcar.rental.service.RentalService;
 import com.rentalcar.rental.util.DateUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.Objects;
@@ -26,41 +28,34 @@ import static com.rentalcar.rental.util.constants.CommonConstants.STATUS_AVAILAB
 import static com.rentalcar.rental.util.constants.CommonConstants.STATUS_RENTED;
 
 @Service
+@Transactional
 @RequiredArgsConstructor
 public class RentalServiceImpl implements RentalService {
 
-    private final CarRepository carRepository;
-    private final ClientRepository clientRepository;
     private final RentalRepository rentalRepository;
     private final PriceConditionRepository priceConditionRepository;
-    private final StatusCarRepository statusCarRepository;
+    private final ClientService clientService;
+    private final CarService carService;
     private final RentalMapper rentalMapper;
 
     @Override
     public RentalDTO rentACar(RentalRequestDTO rentalRequestDTO) {
-        var car = this.carRepository.findById(rentalRequestDTO.getCarId()).orElseThrow(() -> new NotFoundException("Car not found"));
+        var car = this.carService.findCarById(rentalRequestDTO.getCarId());
         if(!car.getStatus().getStatus().equals(STATUS_AVAILABLE)) {
             throw new ValidationException("Car is already not available for rent");
         }
-        var client = this.clientRepository.findById(rentalRequestDTO.getClientId()).orElseThrow(() -> new NotFoundException("Client not found"));
-        var statusRented = this.statusCarRepository.findIdByStatus(STATUS_RENTED).orElseThrow(() -> new NotFoundException("Status not found"));
-
         var price = this.calculatePrice(car, rentalRequestDTO.getDays());
         var points = this.getLoyaltyPoints(car);
-
-        client.setLoyaltyPoints(client.getLoyaltyPoints() + points);
-        car.setStatus(statusRented);
+        var carDTO = this.carService.updateStatusCar(car.getId(), STATUS_RENTED);
+        var clientDTO = this.clientService.updatePoints(rentalRequestDTO.getClientId(), points);
         var rental = Rental.builder()
-                .car(car)
-                .client(client)
+                .car(Car.builder().id(carDTO.getId()).build())
+                .client(Client.builder().id(clientDTO.getId()).build())
                 .rentalDays(rentalRequestDTO.getDays())
                 .startDate(rentalRequestDTO.getCurrencyDate())
                 .endDate(DateUtil.addDays(rentalRequestDTO.getCurrencyDate(), rentalRequestDTO.getDays()))
                 .price(BigDecimal.valueOf(price))
                 .build();
-
-        this.clientRepository.save(client);
-        this.carRepository.save(car);
 
         return this.rentalMapper.rentalToRentalDTO(rentalRepository.save(rental));
     }
@@ -68,18 +63,13 @@ public class RentalServiceImpl implements RentalService {
     @Override
     public ReturnResponseDTO returnCar(ReturnRequestDTO returnRequestDTO) {
         Rental rental = this.rentalRepository.findById(returnRequestDTO.getRentalId()).orElseThrow(() -> new NotFoundException("Rental not found"));
-        var statusRented = this.statusCarRepository.findIdByStatus(STATUS_AVAILABLE).orElseThrow(() -> new NotFoundException("Status not found"));
-
-        Car car = rental.getCar();
-        car.setStatus(statusRented);
+        var car = this.carService.updateStatusCar(rental.getCar().getId(), STATUS_AVAILABLE);
 
         var extraDays = DateUtil.daysBetween(rental.getEndDate(), returnRequestDTO.getReturnDate());
         double lateFee = 0;
         if (extraDays > 0) {
-            lateFee = this.calculatePriceExtraDay(car, (int) extraDays);
+            lateFee = this.calculatePriceExtraDay(rental.getCar(), (int) extraDays);
         }
-
-        this.carRepository.save(car);
 
         return ReturnResponseDTO.builder()
                 .rentalId(rental.getId())
@@ -93,7 +83,7 @@ public class RentalServiceImpl implements RentalService {
                 .build();
     }
 
-    private double calculatePrice(Car car, int rentalDays) {
+    private double calculatePrice(CarDTO car, int rentalDays) {
         var conditions = priceConditionRepository.findByTypeCar_IdOrderByMinDaysAsc(car.getType().getId());
         if(conditions.isEmpty()) {
             throw new NotFoundException("Price conditions not found");
@@ -120,7 +110,7 @@ public class RentalServiceImpl implements RentalService {
         return car.getType().getPriceExtraDay().doubleValue() * extraDays;
     }
 
-    private int getLoyaltyPoints(Car car) {
+    private int getLoyaltyPoints(CarDTO car) {
         return car.getType().getLoyaltyPoints();
     }
 }
