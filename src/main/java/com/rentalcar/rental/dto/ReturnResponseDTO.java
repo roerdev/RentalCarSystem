@@ -1,5 +1,6 @@
 package com.rentalcar.rental.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -20,6 +21,7 @@ public class ReturnResponseDTO {
     private Long carId;
     private String model;
     private String type;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private LocalDate returnDate;
     private int loyaltyPoints;
     private int totalPoints;
